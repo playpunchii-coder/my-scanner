@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Scanner Pro | v2.1</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #reader { border: none !important; }
+        #reader__scan_region { background: white; }
+        video { border-radius: 12px; object-fit: cover !important; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <main class="flex-grow p-4 max-w-lg mx-auto w-full space-y-6">
+        <div class="text-center">
+            <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                AI Scanner Pro
+            </h1>
+            <p class="text-slate-400 text-xs mt-1 uppercase tracking-widest">Master Blueprint v2.1</p>
+        </div>
+
+        <div class="relative group">
+            <div id="reader" class="overflow-hidden rounded-3xl border-4 border-slate-800 bg-slate-900 shadow-2xl"></div>
+            <div id="scan-line" class="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] opacity-0 transition-opacity"></div>
+        </div>
+
+        <div class="bg-slate-900/50 p-5 rounded-2xl border border-slate-800 backdrop-blur-sm">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-xs font-bold text-slate-500 uppercase">Decoded Data (ข้อมูลที่สแกนได้)</span>
+                <span id="badge" class="px-2 py-1 bg-slate-800 text-slate-400 text-[10px] rounded-full">Ready</span>
+            </div>
+            <div id="result-display" class="text-lg font-mono text-emerald-400 break-all leading-tight min-h-[60px]">
+                กำลังรอการสแกน...
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="exportToCSV()" class="flex flex-col items-center justify-center p-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl transition-all active:scale-95 shadow-lg group">
+                <span class="text-sm font-bold">Download CSV</span>
+                <span class="text-[10px] opacity-70">(บันทึกไฟล์)</span>
+            </button>
+            <button onclick="resetLogs()" class="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-red-900/40 rounded-2xl transition-all active:scale-95 border border-slate-700">
+                <span class="text-sm font-bold">Clear Data</span>
+                <span class="text-[10px] opacity-70">(ล้างประวัติ)</span>
+            </div>
+        </div>
+    </main>
+
+    <footer class="p-6 text-center text-slate-600 text-[10px]">
+        No Data Sent to Server • Client-Side Processing • HTTPS Required
+    </footer>
+
+    <script>
+        let logs = [];
+        const resultDisplay = document.getElementById('result-display');
+        const scanLine = document.getElementById('scan-line');
+        const badge = document.getElementById('badge');
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // UI Feedback
+            resultDisplay.innerText = decodedText;
+            scanLine.classList.remove('opacity-0');
+            badge.innerText = "Success!";
+            badge.className = "px-2 py-1 bg-emerald-500 text-white text-[10px] rounded-full animate-pulse";
+            
+            // Log Data
+            logs.push({
+                Time: new Date().toLocaleString('th-TH'),
+                Format: decodedResult.result.format.formatName,
+                Content: decodedText
+            });
+
+            // Auto-reset badge after 2s
+            setTimeout(() => {
+                badge.innerText = "Ready";
+                badge.className = "px-2 py-1 bg-slate-800 text-slate-400 text-[10px] rounded-full";
+                scanLine.classList.add('opacity-0');
+            }, 2000);
+
+            // Haptic Feedback for Mobile
+            if (navigator.vibrate) navigator.vibrate(100);
+        }
+
+        // Initialize Scanner
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+            fps: 15, // เพิ่มความเร็วในการประมวลผล
+            qrbox: { width: 250, height: 180 },
+            rememberLastUsedCamera: true,
+            aspectRatio: 1.0
+        });
+
+        html5QrcodeScanner.render(onScanSuccess);
+
+        // CSV Export Logic (using PapaParse)
+        function exportToCSV() {
+            if (logs.length === 0) return alert("ยังไม่มีข้อมูลให้ดาวน์โหลดครับ");
+            
+            const csv = Papa.unparse(logs);
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel Thai support
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            a.href = url;
+            a.download = `Scanner_Data_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function resetLogs() {
+            if(confirm("ต้องการลบประวัติการสแกนทั้งหมดหรือไม่?")) {
+                logs = [];
+                resultDisplay.innerText = "กำลังรอการสแกน...";
+            }
+        }
+    </script>
+</body>
+</html>
