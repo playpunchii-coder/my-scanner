@@ -2,120 +2,177 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Scanner Pro | v2.1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Master Scanner Pro | v2.1 Optimized</title>
+    
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
+        /* Custom Styles for html5-qrcode internal elements */
         #reader { border: none !important; }
-        #reader__scan_region { background: white; }
-        video { border-radius: 12px; object-fit: cover !important; }
+        #reader__scan_region video { 
+            border-radius: 20px !important; 
+            object-fit: cover !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        /* Hide default buttons from library to use our custom big buttons */
+        #reader button { display: none !important; }
+        #reader__dashboard_section_csr select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            background: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-blue-500/30">
 
     <main class="flex-grow p-4 max-w-lg mx-auto w-full space-y-6">
-        <div class="text-center">
-            <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+        <div class="text-center pt-4">
+            <h1 class="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
                 AI Scanner Pro
             </h1>
-            <p class="text-slate-400 text-xs mt-1 uppercase tracking-widest">Master Blueprint v2.1</p>
+            <div class="flex justify-center items-center gap-2 mt-1">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <p class="text-slate-500 text-[10px] uppercase tracking-widest font-bold">System Online (v2.1)</p>
+            </div>
         </div>
 
         <div class="relative group">
-            <div id="reader" class="overflow-hidden rounded-3xl border-4 border-slate-800 bg-slate-900 shadow-2xl"></div>
-            <div id="scan-line" class="absolute top-0 left-0 w-full h-1 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] opacity-0 transition-opacity"></div>
+            <div id="reader" class="overflow-hidden rounded-[2.5rem] border-4 border-slate-800 bg-slate-900 shadow-2xl"></div>
+            
+            <div id="scan-indicator" class="hidden absolute top-4 right-4 px-3 py-1 bg-emerald-500/20 border border-emerald-500/50 rounded-full">
+                <span class="text-[10px] text-emerald-400 font-bold animate-pulse uppercase">Scanning...</span>
+            </div>
         </div>
 
-        <div class="bg-slate-900/50 p-5 rounded-2xl border border-slate-800 backdrop-blur-sm">
-            <div class="flex justify-between items-center mb-3">
-                <span class="text-xs font-bold text-slate-500 uppercase">Decoded Data (ข้อมูลที่สแกนได้)</span>
-                <span id="badge" class="px-2 py-1 bg-slate-800 text-slate-400 text-[10px] rounded-full">Ready</span>
+        <div class="space-y-3">
+            <div id="control-panel" class="flex flex-col gap-3">
+                <button id="btn-start" onclick="startScanner()" class="w-full h-16 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white rounded-2xl transition-all shadow-lg flex items-center justify-center gap-3">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <span class="text-lg font-bold">Start Scanning (เริ่มสแกน)</span>
+                </button>
+
+                <button id="btn-stop" onclick="stopScanner()" class="hidden w-full h-16 bg-slate-800 hover:bg-red-900/40 border border-slate-700 active:scale-[0.98] text-slate-300 rounded-2xl transition-all flex items-center justify-center gap-3">
+                    <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span class="text-lg font-bold">Stop Scanning (หยุด)</span>
+                </button>
             </div>
-            <div id="result-display" class="text-lg font-mono text-emerald-400 break-all leading-tight min-h-[60px]">
-                กำลังรอการสแกน...
+        </div>
+
+        <div class="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 backdrop-blur-xl shadow-inner">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Decoded Data</span>
+                <span id="badge" class="px-2 py-0.5 bg-slate-800 text-slate-500 text-[10px] rounded-md transition-all">READY</span>
+            </div>
+            <div id="result-display" class="text-xl font-mono text-emerald-400 break-all leading-tight min-h-[60px] flex items-center justify-center text-center">
+                --- รอดำเนินการ ---
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-            <button onclick="exportToCSV()" class="flex flex-col items-center justify-center p-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl transition-all active:scale-95 shadow-lg group">
-                <span class="text-sm font-bold">Download CSV</span>
-                <span class="text-[10px] opacity-70">(บันทึกไฟล์)</span>
+            <button onclick="exportToCSV()" class="h-14 bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                <span class="font-bold text-sm">Export CSV</span>
             </button>
-            <button onclick="resetLogs()" class="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-red-900/40 rounded-2xl transition-all active:scale-95 border border-slate-700">
-                <span class="text-sm font-bold">Clear Data</span>
-                <span class="text-[10px] opacity-70">(ล้างประวัติ)</span>
-            </div>
+            <button onclick="resetLogs()" class="h-14 bg-slate-800/50 border border-slate-700 text-slate-500 hover:text-red-400 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+                <span class="font-bold text-sm">Clear Logs</span>
+            </button>
         </div>
     </main>
 
-    <footer class="p-6 text-center text-slate-600 text-[10px]">
-        No Data Sent to Server • Client-Side Processing • HTTPS Required
+    <footer class="p-8 text-center">
+        <p class="text-slate-700 text-[10px] uppercase font-bold tracking-[0.2em]">Secure Client-Side Engine • No Server Logs</p>
     </footer>
 
     <script>
         let logs = [];
+        const html5QrCode = new Html5Qrcode("reader");
+        const btnStart = document.getElementById('btn-start');
+        const btnStop = document.getElementById('btn-stop');
         const resultDisplay = document.getElementById('result-display');
-        const scanLine = document.getElementById('scan-line');
         const badge = document.getElementById('badge');
+        const indicator = document.getElementById('scan-indicator');
+
+        const qrConfig = { 
+            fps: 15, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+        };
+
+        async function startScanner() {
+            try {
+                // Check if camera permission is available
+                const cameras = await Html5Qrcode.getCameras();
+                if (cameras && cameras.length > 0) {
+                    const cameraId = cameras[0].id; // Use first camera (back camera usually)
+                    
+                    await html5QrCode.start(
+                        { facingMode: "environment" }, // Focus on back camera
+                        qrConfig,
+                        onScanSuccess
+                    );
+
+                    // UI Updates
+                    btnStart.classList.add('hidden');
+                    btnStop.classList.remove('hidden');
+                    indicator.classList.remove('hidden');
+                    badge.innerText = "LIVE";
+                    badge.classList.replace('bg-slate-800', 'bg-emerald-600');
+                    badge.classList.replace('text-slate-500', 'text-white');
+                }
+            } catch (err) {
+                console.error("Camera Error:", err);
+                alert("ไม่สามารถเข้าถึงกล้องได้: " + err);
+            }
+        }
+
+        async function stopScanner() {
+            await html5QrCode.stop();
+            btnStart.classList.remove('hidden');
+            btnStop.classList.add('hidden');
+            indicator.classList.add('hidden');
+            badge.innerText = "PAUSED";
+            badge.classList.replace('bg-emerald-600', 'bg-slate-800');
+        }
 
         function onScanSuccess(decodedText, decodedResult) {
-            // UI Feedback
             resultDisplay.innerText = decodedText;
-            scanLine.classList.remove('opacity-0');
-            badge.innerText = "Success!";
-            badge.className = "px-2 py-1 bg-emerald-500 text-white text-[10px] rounded-full animate-pulse";
             
-            // Log Data
+            // Record Log
             logs.push({
                 Time: new Date().toLocaleString('th-TH'),
                 Format: decodedResult.result.format.formatName,
                 Content: decodedText
             });
 
-            // Auto-reset badge after 2s
-            setTimeout(() => {
-                badge.innerText = "Ready";
-                badge.className = "px-2 py-1 bg-slate-800 text-slate-400 text-[10px] rounded-full";
-                scanLine.classList.add('opacity-0');
-            }, 2000);
-
-            // Haptic Feedback for Mobile
-            if (navigator.vibrate) navigator.vibrate(100);
+            // Feedback
+            if (navigator.vibrate) navigator.vibrate(70);
+            
+            // Visual success indicator
+            badge.innerText = "SUCCESS";
+            setTimeout(() => { if(!html5QrCode.isScanning) badge.innerText = "LIVE" }, 1000);
         }
 
-        // Initialize Scanner
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-            fps: 15, // เพิ่มความเร็วในการประมวลผล
-            qrbox: { width: 250, height: 180 },
-            rememberLastUsedCamera: true,
-            aspectRatio: 1.0
-        });
-
-        html5QrcodeScanner.render(onScanSuccess);
-
-        // CSV Export Logic (using PapaParse)
         function exportToCSV() {
-            if (logs.length === 0) return alert("ยังไม่มีข้อมูลให้ดาวน์โหลดครับ");
-            
+            if (logs.length === 0) return alert("ไม่มีข้อมูลสำหรับการส่งออก");
             const csv = Papa.unparse(logs);
-            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel Thai support
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            
             a.href = url;
-            a.download = `Scanner_Data_${new Date().toISOString().slice(0,10)}.csv`;
-            document.body.appendChild(a);
+            a.download = `Scan_Report_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
 
         function resetLogs() {
-            if(confirm("ต้องการลบประวัติการสแกนทั้งหมดหรือไม่?")) {
+            if(confirm("ลบข้อมูลประวัติทั้งหมด?")) {
                 logs = [];
-                resultDisplay.innerText = "กำลังรอการสแกน...";
+                resultDisplay.innerText = "--- รอดำเนินการ ---";
             }
         }
     </script>
