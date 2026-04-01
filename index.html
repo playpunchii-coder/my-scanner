@@ -3,90 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Master Scanner Pro | v2.2 Smart Check</title>
+    <title>Scanner Pro v2.3 | Hybrid Master</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        #reader { border: none !important; }
+        #reader { border: none !important; position: relative; }
         #reader__scan_region video { 
-            border-radius: 24px !important; 
+            border-radius: 28px !important; 
             object-fit: cover !important;
         }
-        #reader button { display: none !important; }
-        .scan-frame { border: 2px solid rgba(59, 130, 246, 0.5); }
+        /* ซ่อน UI เดิมของ Library */
+        #reader button, #reader__dashboard_section_csr span { display: none !important; }
+        
+        /* Custom Scan Line Animation */
+        .scan-line {
+            position: absolute;
+            width: 90%;
+            height: 2px;
+            background: rgba(59, 130, 246, 0.8);
+            box-shadow: 0 0 15px 2px rgba(59, 130, 246, 0.8);
+            top: 50%;
+            left: 5%;
+            z-index: 10;
+            animation: scanMove 2s infinite ease-in-out;
+            display: none;
+        }
+
+        @keyframes scanMove {
+            0% { top: 30%; }
+            50% { top: 70%; }
+            100% { top: 30%; }
+        }
+
+        /* Glassmorphism Effect */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-blue-500/30">
 
-    <main class="flex-grow p-4 max-w-lg mx-auto w-full space-y-5">
+    <main class="flex-grow p-5 max-w-lg mx-auto w-full space-y-6">
         <div class="text-center pt-2">
-            <h1 class="text-3xl font-black tracking-tight text-white">SCANNER <span class="text-blue-500">PRO</span></h1>
-            <p class="text-slate-500 text-[10px] uppercase tracking-[0.3em] font-bold">v2.2 • Duplicate Protection</p>
+            <h1 class="text-3xl font-black tracking-tighter italic text-white uppercase">
+                Hybrid <span class="text-blue-500">Scanner</span>
+            </h1>
+            <p class="text-slate-500 text-[10px] uppercase tracking-[0.4em] font-bold mt-1">v2.3 • QR & Barcode Optimized</p>
         </div>
 
         <div class="relative group">
             <div id="reader" class="overflow-hidden rounded-[2.5rem] border-4 border-slate-800 bg-slate-900 shadow-2xl"></div>
-            <div id="scan-indicator" class="hidden absolute top-5 right-5 px-3 py-1 bg-blue-600 rounded-full animate-pulse shadow-lg">
-                <span class="text-[10px] text-white font-bold uppercase">Live</span>
+            <div id="visual-line" class="scan-line"></div>
+            
+            <div id="scan-indicator" class="hidden absolute top-6 right-6 flex items-center gap-2 px-3 py-1 bg-blue-600 rounded-full shadow-lg z-20">
+                <span class="w-2 h-2 bg-white rounded-full animate-ping"></span>
+                <span class="text-[10px] text-white font-black uppercase">Active</span>
             </div>
         </div>
 
-        <div id="control-panel" class="grid grid-cols-1 gap-3">
-            <button id="btn-start" onclick="startScanner()" class="w-full h-16 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3">
-                <span class="text-lg font-bold">START SCANNING</span>
+        <div class="space-y-3">
+            <button id="btn-start" onclick="startScanner()" class="w-full h-16 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 font-black text-lg tracking-widest">
+                START SCANNER
             </button>
-            <button id="btn-stop" onclick="stopScanner()" class="hidden w-full h-16 bg-slate-800 hover:bg-red-900/40 border border-slate-700 active:scale-95 text-slate-300 rounded-2xl transition-all flex items-center justify-center gap-3">
-                <span class="text-lg font-bold text-red-500">STOP</span>
+            <button id="btn-stop" onclick="stopScanner()" class="hidden w-full h-16 bg-slate-800 hover:bg-red-900/40 border border-slate-700 active:scale-95 text-red-500 rounded-2xl transition-all flex items-center justify-center gap-3 font-black text-lg">
+                STOP
             </button>
         </div>
 
-        <div id="result-container" class="bg-slate-900/80 p-5 rounded-3xl border border-slate-800 shadow-inner transition-all duration-300">
-            <div class="flex justify-between items-center mb-2">
-                <span id="status-label" class="text-[10px] font-black text-slate-500 uppercase">Status</span>
-                <span id="count-badge" class="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded-md font-bold">Total: 0</span>
+        <div id="result-container" class="glass-card p-6 rounded-[2rem] shadow-inner transition-all duration-500 border-t-2 border-transparent">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <div id="status-dot" class="w-2 h-2 rounded-full bg-slate-700"></div>
+                    <span id="status-label" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Idle</span>
+                </div>
+                <span id="count-badge" class="px-3 py-1 bg-slate-800 text-blue-400 text-[10px] rounded-full font-black border border-slate-700">TOTAL: 0</span>
             </div>
-            <div id="result-display" class="text-xl font-mono text-slate-400 break-all leading-tight min-h-[50px] flex items-center justify-center text-center">
-                Waiting for input...
+            <div id="result-display" class="text-2xl font-mono text-slate-500 break-all text-center min-h-[40px] flex items-center justify-center italic">
+                --- Ready ---
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-            <button onclick="exportToCSV()" class="h-14 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-2xl transition-all active:scale-95 flex items-center justify-center font-bold">CSV EXPORT</button>
-            <button onclick="resetLogs()" class="h-14 bg-slate-800/50 border border-slate-700 text-slate-500 hover:text-red-400 rounded-2xl transition-all active:scale-95 flex items-center justify-center font-bold">CLEAR</button>
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="exportToCSV()" class="h-14 bg-white text-slate-900 hover:bg-blue-50 rounded-2xl transition-all active:scale-95 flex items-center justify-center font-black text-xs uppercase shadow-lg">Download CSV</button>
+            <button onclick="resetLogs()" class="h-14 bg-slate-900 border border-slate-800 text-slate-500 hover:text-red-500 rounded-2xl transition-all active:scale-95 flex items-center justify-center font-black text-xs uppercase">Clear All</button>
         </div>
     </main>
 
+    <footer class="pb-10 text-center opacity-30">
+        <p class="text-[9px] font-bold tracking-[0.5em] uppercase">No Data Persistence • Private Session</p>
+    </footer>
+
     <script>
         let logs = [];
-        let scannedSet = new Set(); // เก็บข้อมูลแบบ Unique เพื่อเช็คซ้ำ
+        let scannedSet = new Set();
         const html5QrCode = new Html5Qrcode("reader");
+        
+        // UI Elements
         const resultContainer = document.getElementById('result-container');
         const resultDisplay = document.getElementById('result-display');
+        const statusDot = document.getElementById('status-dot');
+        const statusLabel = document.getElementById('status-label');
         const countBadge = document.getElementById('count-badge');
-        
-        // Sound Feedback (Beep)
+        const visualLine = document.getElementById('visual-line');
+
+        // Audio Engine
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playBeep(frequency = 440, duration = 0.1) {
+        function playBeep(freq, dur) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.value = frequency;
-            osc.start();
-            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-            osc.stop(audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.frequency.value = freq; osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+            osc.stop(audioCtx.currentTime + dur);
         }
 
         async function startScanner() {
             try {
-                await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
+                // Config Optimized for QR/Barcode Hybrid (300x180)
+                const config = { 
+                    fps: 25, 
+                    qrbox: { width: 300, height: 180 }, 
+                    aspectRatio: 1.0 
+                };
+
+                await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+                
                 document.getElementById('btn-start').classList.add('hidden');
                 document.getElementById('btn-stop').classList.remove('hidden');
                 document.getElementById('scan-indicator').classList.remove('hidden');
-            } catch (err) { alert("Camera Error: " + err); }
+                visualLine.style.display = "block";
+                statusDot.className = "w-2 h-2 rounded-full bg-blue-500 animate-pulse";
+                statusLabel.innerText = "Scanning";
+            } catch (err) { alert("Camera Access Denied: " + err); }
         }
 
         async function stopScanner() {
@@ -94,51 +147,58 @@
             document.getElementById('btn-start').classList.remove('hidden');
             document.getElementById('btn-stop').classList.add('hidden');
             document.getElementById('scan-indicator').classList.add('hidden');
+            visualLine.style.display = "none";
+            statusDot.className = "w-2 h-2 rounded-full bg-slate-700";
+            statusLabel.innerText = "Idle";
         }
 
         function onScanSuccess(decodedText, decodedResult) {
             if (scannedSet.has(decodedText)) {
-                // กรณีข้อมูลซ้ำ (Duplicate)
-                resultContainer.className = "bg-orange-950/40 p-5 rounded-3xl border border-orange-500/50 shadow-inner transition-all duration-300";
-                resultDisplay.innerText = "DUPLICATE: " + decodedText;
-                resultDisplay.className = "text-xl font-mono text-orange-400 break-all leading-tight";
-                playBeep(220, 0.2); // เสียงต่ำเตือนว่าซ้ำ
+                // Duplicate Logic
+                playBeep(200, 0.3);
+                resultContainer.style.borderColor = "rgba(249, 115, 22, 0.5)"; // Orange
+                resultDisplay.innerText = "ALREADY SCANNED";
+                resultDisplay.className = "text-xl font-black text-orange-500 italic";
             } else {
-                // กรณีข้อมูลใหม่ (New Entry)
+                // New Success Logic
                 scannedSet.add(decodedText);
                 logs.push({
-                    ID: logs.length + 1,
-                    Time: new Date().toLocaleString('th-TH'),
-                    Content: decodedText
+                    No: logs.length + 1,
+                    Timestamp: new Date().toLocaleString('th-TH'),
+                    Type: decodedResult.result.format.formatName,
+                    Data: decodedText
                 });
 
-                resultContainer.className = "bg-emerald-950/40 p-5 rounded-3xl border border-emerald-500/50 shadow-inner transition-all duration-300";
-                resultDisplay.innerText = decodedText;
-                resultDisplay.className = "text-xl font-mono text-emerald-400 break-all leading-tight";
-                countBadge.innerText = `Total: ${logs.length}`;
-                
-                playBeep(880, 0.1); // เสียงสูงยืนยันว่าสำเร็จ
+                playBeep(900, 0.1);
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                
+                resultContainer.style.borderColor = "rgba(16, 185, 129, 0.5)"; // Green
+                resultDisplay.innerText = decodedText;
+                resultDisplay.className = "text-2xl font-mono text-emerald-400 font-bold";
+                countBadge.innerText = `TOTAL: ${logs.length}`;
             }
+
+            // Reset UI color after 1.5s
+            setTimeout(() => {
+                resultContainer.style.borderColor = "transparent";
+            }, 1500);
         }
 
         function exportToCSV() {
-            if (logs.length === 0) return alert("ไม่มีข้อมูล");
+            if (logs.length === 0) return alert("No data recorded");
             const csv = Papa.unparse(logs);
             const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `Scanner_v2.2_${new Date().getTime()}.csv`;
+            a.download = `Scan_Export_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
         }
 
         function resetLogs() {
-            if(confirm("ล้างข้อมูลทั้งหมด?")) {
-                logs = [];
-                scannedSet.clear();
-                resultDisplay.innerText = "Waiting for input...";
-                resultContainer.className = "bg-slate-900/80 p-5 rounded-3xl border border-slate-800 shadow-inner";
-                countBadge.innerText = "Total: 0";
+            if(confirm("Wipe all data?")) {
+                logs = []; scannedSet.clear();
+                resultDisplay.innerText = "--- Ready ---";
+                countBadge.innerText = "TOTAL: 0";
             }
         }
     </script>
